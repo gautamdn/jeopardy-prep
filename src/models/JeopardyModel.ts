@@ -27,6 +27,10 @@ export class JeopardyModel {
     this.questions.push(question);
   }
 
+  getAllQuestions(): JeopardyQuestion[] {
+    return this.questions;
+  }
+
   getQuestionsByCategory(category: string): JeopardyQuestion[] {
     return this.questions.filter(q => q.category === category);
   }

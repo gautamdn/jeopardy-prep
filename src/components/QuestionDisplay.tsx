@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useJeopardy } from '../contexts/JeopardyContext';
 import { JeopardyQuestion } from '../types/jeopardy';
 
@@ -8,26 +8,110 @@ export const QuestionDisplay: React.FC = () => {
   const [showAnswer, setShowAnswer] = useState(false);
   const [userAnswer, setUserAnswer] = useState('');
   const [score, setScore] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
-  const getRandomQuestion = () => {
-    const allQuestions = model.getQuestionsByCategory(currentQuestion?.category || '');
-    if (allQuestions.length === 0) return;
+  const getRandomQuestion = async () => {
+    try {
+      console.log('Starting getRandomQuestion...');
+      
+      // Get all questions from all topics
+      const allQuestions = model.getAllQuestions();
+      console.log('Current questions:', allQuestions);
+      
+      if (allQuestions.length === 0) {
+        const topics = model.getDailyTopics();
+        console.log('Available topics:', topics);
+        
+        if (topics.length === 0) {
+          console.log('No topics found');
+          setError('No topics available. Please add some topics first.');
+          return;
+        }
 
-    const randomIndex = Math.floor(Math.random() * allQuestions.length);
-    setCurrentQuestion(allQuestions[randomIndex]);
-    setShowAnswer(false);
-    setUserAnswer('');
+        // Generate questions for each topic
+        for (const topic of topics) {
+          console.log('Generating questions for topic:', topic);
+          try {
+            const newQuestions = await model.generateQuestionsByTopic(topic, 2);
+            console.log('Generated questions:', newQuestions);
+            newQuestions.forEach(q => model.addQuestion(q));
+          } catch (topicError) {
+            console.error('Error generating questions for topic:', topic, topicError);
+          }
+        }
+      }
+
+      // Get all questions again after generation
+      const availableQuestions = model.getAllQuestions();
+      console.log('Available questions after generation:', availableQuestions);
+      
+      if (availableQuestions.length === 0) {
+        console.log('No questions available after generation');
+        setError('Failed to generate questions. Please try again.');
+        return;
+      }
+
+      const randomIndex = Math.floor(Math.random() * availableQuestions.length);
+      setCurrentQuestion(availableQuestions[randomIndex]);
+      setShowAnswer(false);
+      setUserAnswer('');
+      setError(null);
+    } catch (err) {
+      console.error('Error in getRandomQuestion:', err);
+      setError('Failed to generate questions. Please try again.');
+    }
   };
 
   const checkAnswer = () => {
     if (!currentQuestion) return;
 
     setShowAnswer(true);
-    const isCorrect = userAnswer.toLowerCase().includes(currentQuestion.answer.toLowerCase());
+    
+    // Extract keywords from the correct answer by:
+    // 1. Remove "What/Who is/are" prefix
+    // 2. Remove punctuation and convert to lowercase
+    // 3. Split into words and filter out common words
+    const correctAnswer = currentQuestion.answer
+      .replace(/^(what|who|where|when|why|how) (is|are|was|were) /i, '')
+      .replace(/[.,?!]/g, '')
+      .toLowerCase();
+    
+    const userKeywords = userAnswer.toLowerCase()
+      .replace(/^(what|who|where|when|why|how) (is|are|was|were) /i, '')
+      .replace(/[.,?!]/g, '')
+      .split(' ')
+      .filter(word => word.length > 2); // Filter out short words
+
+    const correctKeywords = correctAnswer
+      .split(' ')
+      .filter(word => word.length > 2);
+
+    // Check if the user's answer contains enough keywords
+    const matchedKeywords = userKeywords.filter(word => 
+      correctKeywords.some(correct => correct.includes(word) || word.includes(correct))
+    );
+
+    const percentageMatched = matchedKeywords.length / correctKeywords.length;
+    const isCorrect = percentageMatched >= 0.5; // Require at least 50% keyword match
+
     if (isCorrect) {
       setScore(prev => prev + currentQuestion.value);
     }
   };
+
+  if (error) {
+    return (
+      <div className="p-4 text-center">
+        <p className="text-red-500 mb-4">{error}</p>
+        <button
+          onClick={getRandomQuestion}
+          className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
 
   if (!currentQuestion) {
     return (

@@ -78,15 +78,15 @@ export class LLMService implements IQuestionService {
           messages: [
             {
               role: 'system',
-              content: 'You are a Jeopardy question writer. Generate questions in the format: "This is the answer" (What is the question?). Make them challenging but fair.'
+              content: 'You are a Jeopardy question writer. In Jeopardy, contestants are shown a statement/clue and must respond with a question. For example, if shown "This social network was founded by Mark Zuckerberg", they must respond "What is Facebook?"'
             },
             {
               role: 'user',
               content: `Generate ${count} Jeopardy questions about ${topic}. For each question, provide:
-              1. The answer (in the form of a statement)
-              2. The question (in the form of "What is...?")
+              1. The clue (a statement that contestants see)
+              2. The correct response (must be in the form "What is...?")
               3. A difficulty value (200, 400, 600, 800, or 1000)
-              Format as JSON array with fields: answer, question, value`
+              Format as JSON array with fields: clue (the statement), response (the "What is...?" answer), value`
             }
           ],
           temperature: 0.7
@@ -100,8 +100,8 @@ export class LLMService implements IQuestionService {
         id: `${topic}-${index}-${Date.now()}`,
         category: topic,
         value: q.value,
-        question: q.answer,
-        answer: q.question,
+        question: q.clue,      // The statement shown to contestants
+        answer: q.response,    // The "What is...?" response
         airDate: new Date().toISOString(),
         source: 'llm'
       }));
@@ -124,16 +124,16 @@ export class LLMService implements IQuestionService {
           messages: [
             {
               role: 'system',
-              content: 'You are a Jeopardy question writer. Generate questions in the format: "This is the answer" (What is the question?). Make them challenging but fair.'
+              content: 'You are a Jeopardy question writer. In Jeopardy, contestants are shown a statement/clue and must respond with a question. For example, if shown "This social network was founded by Mark Zuckerberg", they must respond "What is Facebook?"'
             },
             {
               role: 'user',
               content: `Generate ${count} random Jeopardy questions across different categories. For each question, provide:
               1. The category
-              2. The answer (in the form of a statement)
-              3. The question (in the form of "What is...?")
+              2. The clue (a statement that contestants see)
+              3. The correct response (must be in the form "What is...?")
               4. A difficulty value (200, 400, 600, 800, or 1000)
-              Format as JSON array with fields: category, answer, question, value`
+              Format as JSON array with fields: category, clue (the statement), response (the "What is...?" answer), value`
             }
           ],
           temperature: 0.7
@@ -147,8 +147,8 @@ export class LLMService implements IQuestionService {
         id: `random-${index}-${Date.now()}`,
         category: q.category,
         value: q.value,
-        question: q.answer,
-        answer: q.question,
+        question: q.clue,      // The statement shown to contestants
+        answer: q.response,    // The "What is...?" response
         airDate: new Date().toISOString(),
         source: 'llm'
       }));
@@ -157,4 +157,4 @@ export class LLMService implements IQuestionService {
       return [];
     }
   }
-} 
+}
